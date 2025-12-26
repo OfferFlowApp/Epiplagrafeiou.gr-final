@@ -1,0 +1,7 @@
+{
+  "name": "EpplaGrafeiou.gr - Modern Office Solutions",
+  "description": "A high-conversion e-commerce platform for premium office furniture featuring AI-driven SEO, XML supplier integration with markup management, and seamless Stripe payments.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
