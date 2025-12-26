@@ -1,22 +1,34 @@
 
 export interface ColorVariant {
   name: string;
-  hex: string;
-  image?: string;
+  hex?: string;
+  image: string;
+  productId: string;
+}
+
+export interface ProductAttribute {
+  name: string;
+  value: string;
 }
 
 export interface Product {
   id: string;
   sku: string;
+  model: string;
   name: string;
   description: string;
   price: number;
+  originalPrice?: number;
   supplierPrice: number;
   category: string;
   image: string;
+  gallery: string[];
   stock: number;
   seoKeywords: string[];
   colors?: ColorVariant[];
+  attributes?: ProductAttribute[];
+  rewardPoints: number;
+  availability: string;
 }
 
 export interface BlogPost {
@@ -33,14 +45,6 @@ export interface BlogPost {
 
 export interface CartItem extends Product {
   quantity: number;
-}
-
-export interface SupplierItem {
-  id: string;
-  name: string;
-  basePrice: number;
-  stock: number;
-  category: string;
 }
 
 export interface MarkupTier {

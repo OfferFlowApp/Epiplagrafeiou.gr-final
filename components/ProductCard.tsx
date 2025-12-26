@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ShoppingCart, Star, Eye, ShieldCheck } from 'lucide-react';
+import { ShoppingCart, Star, Eye, ShieldCheck, Heart } from 'lucide-react';
 import { Product } from '../types';
 
 interface ProductCardProps {
@@ -10,90 +10,82 @@ interface ProductCardProps {
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onClick }) => {
+  const installment = (product.price / 3).toFixed(2);
+
   return (
     <div 
-      className="group bg-white rounded-[32px] border border-slate-100 overflow-hidden hover:shadow-2xl hover:shadow-indigo-500/10 transition-all duration-700 flex flex-col h-full cursor-pointer"
+      className="group bg-white rounded-2xl border border-slate-100 overflow-hidden hover:shadow-2xl transition-all duration-500 flex flex-col h-full cursor-pointer p-4"
       onClick={onClick}
     >
-      <div className="relative aspect-square overflow-hidden bg-slate-50">
+      <div className="relative aspect-square overflow-hidden bg-white mb-4">
         <img 
           src={product.image} 
           alt={product.name}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+          className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-1000"
         />
-        
-        {/* Wishlist Placeholder Icon like epipla1.gr */}
-        <div className="absolute top-4 right-4 z-10">
-          <div className="w-10 h-10 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-white transition-all shadow-sm">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-          </div>
-        </div>
-
-        <div className="absolute top-4 left-4 flex flex-col gap-2">
-          {product.stock < 10 && (
-            <span className="bg-red-600 text-white text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest shadow-lg">
-              Περιορισμένο Απόθεμα
-            </span>
-          )}
-          <span className="bg-white/95 backdrop-blur-sm text-slate-900 text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest shadow-sm">
-            {product.category}
-          </span>
-        </div>
-        
-        <div className="absolute inset-0 bg-indigo-600/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <div className="bg-white text-slate-900 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500 shadow-2xl">
-            <Eye size={16} /> Προβολή
-          </div>
+        <div className="absolute top-2 right-2">
+          <button className="w-8 h-8 bg-white/80 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors shadow-sm">
+            <Heart size={18} />
+          </button>
         </div>
       </div>
 
-      <div className="p-6 flex flex-col flex-grow text-left">
-        <div className="flex items-center gap-1 mb-2">
-          {[...Array(5)].map((_, i) => (
-            <Star key={i} size={12} className="fill-yellow-400 text-yellow-400" />
-          ))}
-          <span className="text-[10px] text-slate-400 ml-2 font-bold uppercase tracking-widest flex items-center gap-1">
-            <ShieldCheck size={10} /> Verified
-          </span>
-        </div>
-        
-        <h3 className="font-black text-slate-800 text-lg mb-1 group-hover:text-indigo-600 transition-colors line-clamp-1 leading-tight tracking-tight uppercase">
+      <div className="flex flex-col flex-grow text-left space-y-2">
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{product.category}</span>
+        <h3 className="font-bold text-slate-900 leading-snug group-hover:text-indigo-600 transition-colors line-clamp-2 uppercase h-10">
           {product.name}
         </h3>
-
-        {/* Color Swatches like epipla1.gr */}
-        {product.colors && product.colors.length > 0 && (
-          <div className="flex items-center gap-2 mt-2 mb-4">
-            {product.colors.slice(0, 4).map((color, idx) => (
-              <div 
-                key={idx} 
-                className="w-6 h-6 rounded-full border border-slate-200 shadow-sm p-[2px]"
-                title={color.name}
-              >
-                <div className="w-full h-full rounded-full" style={{ backgroundColor: color.hex }}></div>
-              </div>
-            ))}
-            {product.colors.length > 4 && (
-              <span className="text-[10px] font-bold text-slate-400 ml-1">+{product.colors.length - 4}</span>
+        
+        <div className="flex items-center justify-between pt-2">
+          <div className="flex flex-col">
+            <div className="flex items-baseline gap-1">
+              <span className="text-xs font-bold text-slate-900">€</span>
+              <span className="text-2xl font-black text-slate-900">
+                {Math.floor(product.price)}
+                <span className="text-sm font-bold align-top">.{((product.price % 1) * 100).toFixed(0).padStart(2, '0')}</span>
+              </span>
+            </div>
+            {product.originalPrice && (
+              <span className="text-xs text-slate-400 line-through">€{product.originalPrice.toFixed(2)}</span>
             )}
           </div>
-        )}
-
-        <div className="flex items-center justify-between mt-auto pt-4 border-t border-slate-50">
-          <div className="flex flex-col">
-            <span className="text-2xl font-black text-slate-900 leading-none">€{product.price.toLocaleString('el-GR')}</span>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">με ΦΠΑ</span>
+          <div className="flex gap-1">
+            {product.colors?.slice(0, 3).map((c, i) => (
+              <img 
+                key={i} 
+                src={c.image} 
+                className="w-6 h-6 rounded-full border border-slate-100 object-cover" 
+                alt={c.name} 
+              />
+            ))}
+            {product.colors && product.colors.length > 3 && (
+              <div className="w-6 h-6 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-400">
+                +{product.colors.length - 3}
+              </div>
+            )}
           </div>
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddToCart(product);
-            }}
-            className="bg-indigo-600 hover:bg-slate-900 text-white w-12 h-12 rounded-2xl flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-xl shadow-indigo-200 hover:shadow-slate-300"
-          >
-            <ShoppingCart size={20} />
-          </button>
         </div>
+
+        <div className="bg-slate-50 p-3 rounded-xl space-y-1">
+           <div className="flex justify-between items-center">
+              <span className="text-[10px] font-medium text-slate-500">ή σε 3 άτοκες δόσεις των {installment} €</span>
+              <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Klarna_logo.svg" className="h-2 opacity-60" alt="Klarna" />
+           </div>
+           <p className="text-[10px] font-bold text-blue-600 uppercase tracking-tight">
+             {product.rewardPoints} πόντους ανταμοιβής
+           </p>
+        </div>
+
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddToCart(product);
+          }}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all mt-auto"
+        >
+          <ShoppingCart size={18} />
+          Προσθήκη
+        </button>
       </div>
     </div>
   );
