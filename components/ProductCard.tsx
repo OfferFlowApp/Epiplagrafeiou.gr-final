@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ShoppingCart, Star, Eye, ShieldCheck, Heart } from 'lucide-react';
+import { ShoppingCart, Heart, MoveVertical, MoveHorizontal, Maximize2 } from 'lucide-react';
 import { Product } from '../types';
 
 interface ProductCardProps {
@@ -11,6 +11,20 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onClick }) => {
   const installment = (product.price / 3).toFixed(2);
+
+  // Helper to extract dimensions from attributes
+  const getDim = (name: string) => {
+    return product.attributes?.find(a => 
+      a.name.toLowerCase().includes(name) || 
+      a.name.toLowerCase() === name
+    )?.value;
+  };
+
+  const dims = {
+    height: getDim('ύψος') || getDim('height'),
+    width: getDim('μήκος') || getDim('πλάτος') || getDim('width'),
+    depth: getDim('βάθος') || getDim('depth')
+  };
 
   return (
     <div 
@@ -31,49 +45,70 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onClick
       </div>
 
       <div className="flex flex-col flex-grow text-left space-y-2">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{product.category}</span>
-        <h3 className="font-bold text-slate-900 leading-snug group-hover:text-indigo-600 transition-colors line-clamp-2 uppercase h-10">
+        <h3 className="font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors line-clamp-2 uppercase min-h-[2.5rem]">
           {product.name}
         </h3>
-        
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex flex-col">
-            <div className="flex items-baseline gap-1">
-              <span className="text-xs font-bold text-slate-900">€</span>
-              <span className="text-2xl font-black text-slate-900">
-                {Math.floor(product.price)}
-                <span className="text-sm font-bold align-top">.{((product.price % 1) * 100).toFixed(0).padStart(2, '0')}</span>
-              </span>
+
+        {/* Dimensions Section with Icons */}
+        <div className="flex gap-4 text-slate-400">
+          {dims.height && (
+            <div className="flex items-center gap-1">
+              <MoveVertical size={14} className="opacity-50" />
+              <span className="text-[10px] font-bold">{dims.height}</span>
             </div>
-            {product.originalPrice && (
-              <span className="text-xs text-slate-400 line-through">€{product.originalPrice.toFixed(2)}</span>
-            )}
-          </div>
-          <div className="flex gap-1">
-            {product.colors?.slice(0, 3).map((c, i) => (
-              <img 
+          )}
+          {dims.width && (
+            <div className="flex items-center gap-1">
+              <MoveHorizontal size={14} className="opacity-50" />
+              <span className="text-[10px] font-bold">{dims.width}</span>
+            </div>
+          )}
+          {dims.depth && (
+            <div className="flex items-center gap-1">
+              <Maximize2 size={14} className="opacity-50 rotate-45" />
+              <span className="text-[10px] font-bold">{dims.depth}</span>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex items-baseline gap-1 py-1">
+          <span className="text-2xl font-black text-slate-900">
+            {Math.floor(product.price)}
+            <span className="text-sm font-bold align-top">.{((product.price % 1) * 100).toFixed(0).padStart(2, '0')} €</span>
+          </span>
+          {product.originalPrice && (
+            <span className="text-xs text-slate-400 line-through ml-2">€{product.originalPrice.toFixed(2)}</span>
+          )}
+        </div>
+
+        {/* Bubble Variant Selector */}
+        {product.colors && product.colors.length > 0 && (
+          <div className="flex flex-wrap gap-2 py-2">
+            {product.colors.slice(0, 4).map((c, i) => (
+              <div 
                 key={i} 
-                src={c.image} 
-                className="w-6 h-6 rounded-full border border-slate-100 object-cover" 
-                alt={c.name} 
-              />
+                className={`w-10 h-10 rounded-full border-2 p-0.5 transition-all ${product.image === c.image ? 'border-indigo-500 shadow-md' : 'border-slate-100 hover:border-slate-300'}`}
+              >
+                <img 
+                  src={c.image} 
+                  className="w-full h-full rounded-full object-cover" 
+                  alt={c.name} 
+                />
+              </div>
             ))}
-            {product.colors && product.colors.length > 3 && (
-              <div className="w-6 h-6 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-400">
-                +{product.colors.length - 3}
+            {product.colors.length > 4 && (
+              <div className="w-10 h-10 rounded-full bg-slate-50 border-2 border-slate-100 flex items-center justify-center text-[10px] font-black text-slate-400">
+                +{product.colors.length - 4}
               </div>
             )}
           </div>
-        </div>
+        )}
 
-        <div className="bg-slate-50 p-3 rounded-xl space-y-1">
+        <div className="bg-slate-50 p-3 rounded-xl space-y-1 mt-auto">
            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-medium text-slate-500">ή σε 3 άτοκες δόσεις των {installment} €</span>
+              <span className="text-[9px] font-medium text-slate-500">ή σε 3 άτοκες δόσεις των {installment} €</span>
               <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Klarna_logo.svg" className="h-2 opacity-60" alt="Klarna" />
            </div>
-           <p className="text-[10px] font-bold text-blue-600 uppercase tracking-tight">
-             {product.rewardPoints} πόντους ανταμοιβής
-           </p>
         </div>
 
         <button 
@@ -81,7 +116,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onClick
             e.stopPropagation();
             onAddToCart(product);
           }}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all mt-auto"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-all shadow-md active:scale-95"
         >
           <ShoppingCart size={18} />
           Προσθήκη
