@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { ShoppingCart, Heart, MoveVertical, MoveHorizontal, Maximize2 } from 'lucide-react';
+import { ShoppingCart, Heart, MoveVertical, MoveHorizontal, Maximize2, Tag } from 'lucide-react';
 import { Product } from '../types';
 
 interface ProductCardProps {
@@ -32,6 +31,14 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, onClick
       onClick={onClick}
     >
       <div className="relative aspect-square overflow-hidden bg-white mb-4">
+        {/* Conversion Driver: 20% Discount Badge */}
+        <div className="absolute top-2 left-2 z-10">
+          <div className="bg-indigo-600 text-white text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 animate-pulse">
+            <Tag size={12} />
+            -20% OFF
+          </div>
+        </div>
+
         <img 
           src={product.image} 
           alt={product.name}

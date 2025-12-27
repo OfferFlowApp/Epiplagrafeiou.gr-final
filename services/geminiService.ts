@@ -1,9 +1,9 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 
 // Always use process.env.API_KEY directly as per guidelines
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
+// Generate high-conversion SEO metadata using gemini-3-flash-preview
 export const generateSEOContent = async (productName: string, category: string) => {
   try {
     const response = await ai.models.generateContent({
@@ -22,7 +22,7 @@ export const generateSEOContent = async (productName: string, category: string) 
         }
       }
     });
-    // Access response.text property directly
+    // Access response.text property directly as per guidelines
     return JSON.parse(response.text || '{}');
   } catch (error) {
     console.error("SEO Generation failed", error);
@@ -30,10 +30,11 @@ export const generateSEOContent = async (productName: string, category: string) 
   }
 };
 
+// Get professional shopping advice using gemini-3-pro-preview for complex reasoning
 export const getShoppingAssistantResponse = async (query: string, inventory: any[]) => {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: 'gemini-3-pro-preview',
       contents: `You are a professional interior designer for EpplaGrafeiou.gr. Help the user choose from these products: ${JSON.stringify(inventory.map(p => ({name: p.name, category: p.category, price: p.price})))}. User query: ${query}`,
       config: {
         systemInstruction: "Be helpful, professional, and focus on selling high-end ergonomic solutions."
