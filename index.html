@@ -33,6 +33,27 @@
           transition: background 0.3s;
         }
         ::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+        /* Initial Loader */
+        #root:empty {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 100vh;
+          background: #f8fafc;
+        }
+        #root:empty::after {
+          content: "";
+          width: 40px;
+          height: 40px;
+          border: 4px solid #e2e8f0;
+          border-top-color: #4f46e5;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
     </style>
 <script type="importmap">
 {
@@ -44,13 +65,16 @@
     "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
     "firebase/app": "https://esm.sh/firebase@11.0.1/app",
     "firebase/firestore": "https://esm.sh/firebase@11.0.1/firestore",
-    "firebase/firestore/lite": "https://esm.sh/firebase@11.0.1/firestore/lite",
-    "firebase/": "https://esm.sh/firebase@^12.7.0/"
+    "firebase/": "https://esm.sh/firebase@^12.7.0/",
+    "tailwind-merge": "https://esm.sh/tailwind-merge@^3.4.0",
+    "clsx": "https://esm.sh/clsx@^2.1.1"
   }
 }
 </script>
 </head>
 <body class="bg-slate-50 text-slate-900 overflow-x-hidden selection:bg-indigo-600 selection:text-white">
     <div id="root"></div>
+    <!-- Point to entry file explicitly -->
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>

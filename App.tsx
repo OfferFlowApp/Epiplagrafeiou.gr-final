@@ -10,16 +10,18 @@ import CartModal from './components/CartModal';
 import { loadProducts, saveProducts } from './services/dbService';
 import { pullFromCloud, pushToCloud, initFirebase } from './services/firebaseService';
 import { initiateStripeCheckout } from './services/stripeService';
-import { ShoppingCart, Truck, CheckCircle2, Zap, Sparkles, CreditCard as CardIcon, Loader2 } from 'lucide-react';
+import { ShoppingCart, Truck, CheckCircle2, Zap, Sparkles, CreditCard as CardIcon, Loader2, PackageSearch, AlertCircle } from 'lucide-react';
+import { createSlug } from './utils';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(Page.Home);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('Όλα');
+  const [activeCategorySlug, setActiveCategorySlug] = useState<string | null>(null);
   
   const initialized = useRef(false);
 
@@ -28,25 +30,37 @@ const App: React.FC = () => {
     
     const hydrate = async () => {
       try {
-        console.log("Eppla: Syncing with Firestore Cloud...");
+        console.log("App: Initializing Cloud Services...");
         initFirebase();
         
-        const cloudData = await pullFromCloud();
+        let initialData: Product[] = [];
         
-        if (cloudData && cloudData.length > 0) {
-          console.log(`Eppla: Success! ${cloudData.length} products loaded from Cloud.`);
-          setProducts(cloudData);
-          await saveProducts(cloudData);
-        } else {
+        try {
+          const cloudData = await pullFromCloud();
+          if (cloudData && cloudData.length > 0) {
+            initialData = cloudData;
+            await saveProducts(cloudData);
+            console.log("App: Synced from Cloud.");
+          }
+        } catch (cloudErr) {
+          console.warn("App: Cloud Sync skipped (Normal if keys missing).", cloudErr);
+        }
+
+        if (initialData.length === 0) {
           const localData = await loadProducts();
           if (localData && localData.length > 0) {
-            setProducts(localData);
+            initialData = localData;
+            console.log("App: Loaded from Local DB.");
           } else {
-            setProducts(MOCK_PRODUCTS);
+            initialData = MOCK_PRODUCTS;
+            console.log("App: Using MOCK data.");
           }
         }
-      } catch (e) {
-        console.error("Hydration failed", e);
+
+        setProducts(initialData);
+      } catch (e: any) {
+        console.error("App: Fatal hydration error", e);
+        setError(e.message || "Failed to initialize application core.");
         setProducts(MOCK_PRODUCTS);
       } finally {
         setIsLoading(false);
@@ -56,6 +70,16 @@ const App: React.FC = () => {
 
     hydrate();
   }, []);
+
+  const handleNavigate = (page: Page, categorySlug?: string) => {
+    setCurrentPage(page);
+    if (categorySlug) {
+      setActiveCategorySlug(categorySlug.toLowerCase().replace(/^\/|\/$/g, ''));
+    } else if (page === Page.Shop) {
+      setActiveCategorySlug(null); 
+    }
+    window.scrollTo(0, 0);
+  };
 
   const dynamicMegaMenu = useMemo(() => {
     const requestedOrder = ['Επιπλα Γραφείου', 'Διακόσμηση', 'Φωτισμός', 'Έπιπλα Εσωτερικού χώρου'];
@@ -71,8 +95,8 @@ const App: React.FC = () => {
 
     supplierCats.forEach(fullCat => {
       const lowerCat = fullCat.toLowerCase();
-      const isOutdoor = lowerCat.includes('κήπου') || lowerCat.includes('outdoor') || lowerCat.includes('βεράντα') || lowerCat.includes('garden') || lowerCat.includes('βεραντας');
-      const isOffice = lowerCat.includes('γραφεί') || lowerCat.includes('office') || lowerCat.includes('εργασία') || lowerCat.includes('επαγγελματικ');
+      const isOutdoor = lowerCat.includes('κήπου') || lowerCat.includes('outdoor') || lowerCat.includes('βεράντα') || lowerCat.includes('garden');
+      const isOffice = lowerCat.includes('γραφεί') || lowerCat.includes('office') || lowerCat.includes('εργασία');
       const isLighting = lowerCat.includes('φωτισ') || lowerCat.includes('light');
       const isDecor = lowerCat.includes('διακόσμηση') || lowerCat.includes('decor');
 
@@ -83,19 +107,23 @@ const App: React.FC = () => {
       else targetIndex = 3;
 
       if (targetIndex !== -1) {
-        const name = fullCat.includes('>') ? fullCat.split('>').pop()?.trim() : fullCat;
-        if (!menu[targetIndex].subCategories.find((s: any) => s.name === name)) {
-          menu[targetIndex].subCategories.push({
-            name: name || fullCat,
-            image: products.find(p => p.category === fullCat)?.image || 'https://images.unsplash.com/photo-1594620302200-9a762244a156?auto=format&fit=crop&q=80&w=200'
-          });
-        }
+        const parts = fullCat.split(' > ').map(p => p.trim());
+        parts.forEach((partName, idx) => {
+          if (idx === 0) return;
+          if (partName && !menu[targetIndex].subCategories.find((s: any) => s.name === partName)) {
+            const representativeProduct = products.find(p => p.category.split(' > ').map(c => c.trim()).includes(partName));
+            menu[targetIndex].subCategories.push({
+              name: partName,
+              image: representativeProduct?.image || 'https://images.unsplash.com/photo-1594620302200-9a762244a156?auto=format&fit=crop&q=80&w=200'
+            });
+          }
+        });
       }
     });
+
+    menu.forEach(m => m.subCategories.sort((a: any, b: any) => a.name.localeCompare(b.name)));
     return menu;
   }, [products]);
-
-  const dynamicCategoriesList = useMemo(() => ['Όλα', ...dynamicMegaMenu.map(m => m.title)], [dynamicMegaMenu]);
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -125,31 +153,26 @@ const App: React.FC = () => {
     await initiateStripeCheckout(cart);
   };
 
-  const handleImportProducts = async (newProducts: Product[]) => {
-    setProducts(newProducts);
-    await saveProducts(newProducts);
-    await pushToCloud(newProducts);
-    setCurrentPage(Page.Shop);
-    console.log("Eppla: Catalog synchronized to Cloud.");
-  };
-
   const filteredProducts = useMemo(() => {
-    if (selectedCategory === 'Όλα') return products;
+    if (!activeCategorySlug) return products;
     return products.filter(p => {
-      const lowerP = p.category.toLowerCase();
-      const isOutdoor = lowerP.includes('κήπου') || lowerP.includes('outdoor') || lowerP.includes('βεράντα') || lowerP.includes('garden') || lowerP.includes('βεραντας');
-      
-      if (selectedCategory === 'Επιπλα Γραφείου') {
-        return !isOutdoor && (lowerP.includes('γραφεί') || lowerP.includes('office') || lowerP.includes('εργασία'));
-      }
-      if (selectedCategory === 'Διακόσμηση') return lowerP.includes('διακόσμηση') || lowerP.includes('decor');
-      if (selectedCategory === 'Φωτισμός') return lowerP.includes('φωτισ') || lowerP.includes('light');
-      if (selectedCategory === 'Έπιπλα Εσωτερικού χώρου') {
-        return isOutdoor || lowerP.includes('εσωτερικ') || lowerP.includes('σαλόνι') || lowerP.includes('υπνοδωμάτιο');
-      }
-      return p.category.includes(selectedCategory);
+      const categoryPathArray = p.category.split(' > ').map(createSlug);
+      const matchesBucket = dynamicMegaMenu.some(menu => {
+         if (createSlug(menu.title) === activeCategorySlug) {
+            const lowerP = p.category.toLowerCase();
+            const isOutdoor = lowerP.includes('κήπου') || lowerP.includes('outdoor') || lowerP.includes('βεράντα');
+            if (menu.title === 'Επιπλα Γραφείου') return !isOutdoor && (lowerP.includes('γραφεί') || lowerP.includes('office'));
+            if (menu.title === 'Διακόσμηση') return lowerP.includes('διακόσμηση') || lowerP.includes('decor');
+            if (menu.title === 'Φωτισμός') return lowerP.includes('φωτισ') || lowerP.includes('light');
+            if (menu.title === 'Έπιπλα Εσωτερικού χώρου') return isOutdoor || lowerP.includes('εσωτερικ') || lowerP.includes('σαλόνι');
+         }
+         return false;
+      });
+      const matchesIndividualPart = categoryPathArray.includes(activeCategorySlug);
+      const fullPathString = categoryPathArray.join('/');
+      return matchesBucket || matchesIndividualPart || fullPathString.includes(activeCategorySlug);
     });
-  }, [selectedCategory, products]);
+  }, [activeCategorySlug, products, dynamicMegaMenu]);
 
   const renderHome = () => (
     <div className="animate-fade-in text-left">
@@ -188,7 +211,7 @@ const App: React.FC = () => {
              </div>
           </div>
           <div className="flex flex-wrap gap-4 pt-4">
-            <button onClick={() => setCurrentPage(Page.Shop)} className="bg-slate-900 text-white px-10 py-5 rounded-[24px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-2xl shadow-slate-200 active:scale-95">EXPLORE SHOP</button>
+            <button onClick={() => handleNavigate(Page.Shop)} className="bg-slate-900 text-white px-10 py-5 rounded-[24px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-2xl shadow-slate-200 active:scale-95">EXPLORE SHOP</button>
             <button className="px-10 py-5 rounded-[24px] font-black uppercase tracking-widest border border-slate-200 hover:bg-slate-50 transition-all">VIEW TRENDS</button>
           </div>
         </div>
@@ -202,32 +225,69 @@ const App: React.FC = () => {
 
   return (
     <div className="relative min-h-screen bg-white selection:bg-indigo-100 selection:text-indigo-900">
-      <Header cartCount={cart.length} onNavigate={setCurrentPage} currentPage={currentPage} onOpenCart={() => setIsCartOpen(true)} dynamicMegaMenu={dynamicMegaMenu} />
+      <Header 
+        cartCount={cart.length} 
+        onNavigate={handleNavigate} 
+        currentPage={currentPage} 
+        onOpenCart={() => setIsCartOpen(true)} 
+        dynamicMegaMenu={dynamicMegaMenu} 
+      />
       
       {isLoading ? (
-        <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={48} /></div>
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+          <Loader2 className="animate-spin text-indigo-600" size={48} />
+          <p className="text-xs font-black uppercase tracking-widest text-slate-400">Syncing Environment...</p>
+        </div>
+      ) : error ? (
+        <div className="min-h-[70vh] flex flex-col items-center justify-center text-center p-10 space-y-6">
+           <AlertCircle className="text-rose-500" size={64} />
+           <div>
+             <h2 className="text-2xl font-black uppercase">Configuration Error</h2>
+             <p className="text-slate-500 max-w-md mx-auto mt-2">{error}</p>
+           </div>
+           <button onClick={() => window.location.reload()} className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest">Retry Connection</button>
+        </div>
       ) : (
         <main className="animate-fade-in">
           {currentPage === Page.Home && renderHome()}
           {currentPage === Page.Shop && (
-            <div className="container mx-auto px-4 py-12 text-left">
+            <div className="container mx-auto px-4 py-12 text-left min-h-screen">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-8 mb-16">
                 <div>
-                  <h1 className="text-5xl font-black uppercase tracking-tighter">{selectedCategory}</h1>
+                  <h1 className="text-5xl font-black uppercase tracking-tighter">
+                    {activeCategorySlug ? activeCategorySlug.split('/').pop()?.replace(/-/g, ' ') : 'Όλα τα προϊόντα'}
+                  </h1>
                   <p className="text-slate-500 max-w-2xl mt-4 font-medium">Κορυφαία έπιπλα γραφείου και σπιτιού με άμεση παράδοση σε όλη την Ελλάδα.</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {dynamicCategoriesList.map(cat => (
-                    <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${selectedCategory === cat ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{cat}</button>
+                  <button onClick={() => setActiveCategorySlug(null)} className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${!activeCategorySlug ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Όλα</button>
+                  {dynamicMegaMenu.map(m => (
+                    <button key={m.title} onClick={() => setActiveCategorySlug(createSlug(m.title))} className={`px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeCategorySlug === createSlug(m.title) ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-100' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{m.title}</button>
                   ))}
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                {filteredProducts.map(product => <ProductCard key={product.id} product={product} onAddToCart={addToCart} onClick={() => { setSelectedProduct(product); setCurrentPage(Page.Product); window.scrollTo(0,0); }} />)}
-              </div>
+              
+              {filteredProducts.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                  {filteredProducts.map(product => (
+                    <ProductCard 
+                      key={product.id} 
+                      product={product} 
+                      onAddToCart={addToCart} 
+                      onClick={() => { setSelectedProduct(product); setCurrentPage(Page.Product); window.scrollTo(0,0); }} 
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-32 text-slate-400 space-y-4">
+                  <PackageSearch size={64} className="opacity-20" />
+                  <p className="font-bold uppercase tracking-widest text-xs">Δεν βρέθηκαν προϊόντα σε αυτή την κατηγορία</p>
+                  <button onClick={() => setActiveCategorySlug(null)} className="text-indigo-600 font-black text-xs uppercase tracking-widest underline">Επιστροφή σε όλα</button>
+                </div>
+              )}
             </div>
           )}
-          {currentPage === Page.Admin && <AdminPanel onImportProducts={handleImportProducts} />}
+          {currentPage === Page.Admin && <AdminPanel onImportProducts={(newProducts) => { setProducts(newProducts); handleNavigate(Page.Shop); }} />}
           {currentPage === Page.Product && selectedProduct && <ProductDetail product={selectedProduct} onAddToCart={addToCart} relatedProducts={products.slice(0, 4)} onNavigateToProduct={(p) => { setSelectedProduct(p); window.scrollTo(0,0); }} />}
         </main>
       )}
@@ -247,7 +307,7 @@ const App: React.FC = () => {
               <img src="https://i.postimg.cc/HnskmvDn/EpiplaGRAFEIOU.GR-removebg-preview.png" alt="Eppla Logo" className="h-16 w-auto object-contain" />
               <p className="text-slate-400 text-sm leading-relaxed">Modern office environments designed for the high-performance workforce.</p>
            </div>
-           <div><h4 onClick={() => setCurrentPage(Page.Admin)} className="font-bold uppercase tracking-widest text-xs mb-8 cursor-pointer hover:text-indigo-400 transition-colors">Admin Access</h4></div>
+           <div><h4 onClick={() => handleNavigate(Page.Admin)} className="font-bold uppercase tracking-widest text-xs mb-8 cursor-pointer hover:text-indigo-400 transition-colors">Admin Access</h4></div>
            <div><h4 className="font-bold uppercase tracking-widest text-xs mb-8">Επικοινωνία</h4><p className="text-slate-400 text-sm">Καναδά 11, Ρόδος<br/>22410 21087</p></div>
         </div>
       </footer>
